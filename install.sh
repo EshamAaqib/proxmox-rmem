@@ -115,7 +115,7 @@ fi
 cd "$SCRIPT_DIR"
 
 # 1. Patch Proxmox
-print_status "[1/5] Patching Proxmox QemuServer.pm..."
+print_status "[1/6] Patching Proxmox QemuServer.pm..."
 python3 patch_pve.py
 if [ $? -ne 0 ]; then
     print_error "Error patching Proxmox. Aborting."
@@ -123,7 +123,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # 2. Setup Config Directory
-print_status "[2/5] Setting up configuration..."
+print_status "[2/6] Setting up configuration..."
 mkdir -p "$CONFIG_DIR"
 if [ ! -f "$CONFIG_DIR/config.json" ]; then
     # Create default config with auto-discovery enabled
@@ -137,20 +137,22 @@ fi
 # 3. Setup SSH Key
 SSH_KEY="$CONFIG_DIR/id_rsa_monitor"
 if [ ! -f "$SSH_KEY" ]; then
-    print_status "[3/5] Generating SSH key for monitoring..."
+    print_status "[3/6] Generating SSH key for monitoring..."
     ssh-keygen -t ed25519 -f "$SSH_KEY" -N "" -q
     echo "  SSH Key created: $SSH_KEY"
 else
-    print_status "[3/5] Using existing SSH key"
+    print_status "[3/6] Using existing SSH key"
 fi
 
 # 4. Install Script
-print_status "[4/5] Installing service script..."
+print_status "[4/6] Installing service script..."
 cp proxmox-rmem.py "$INSTALL_DIR/proxmox-rmem.py"
 chmod +x "$INSTALL_DIR/proxmox-rmem.py"
+cp patch_pve.py "$INSTALL_DIR/proxmox-rmem-patch.py"
+chmod +x "$INSTALL_DIR/proxmox-rmem-patch.py"
 
 # 5. Setup Systemd Service
-print_status "[5/5] Creating systemd service..."
+print_status "[5/6] Creating systemd service..."
 cat > "$SERVICE_FILE" <<EOF
 [Unit]
 Description=Proxmox Real Memory Monitor
@@ -171,6 +173,17 @@ EOF
 systemctl daemon-reload
 systemctl enable proxmox-rmem
 systemctl restart proxmox-rmem
+
+# 6. Install apt post-invoke hook
+print_status "[6/6] Installing apt post-invoke hook..."
+APT_HOOK_FILE="/etc/apt/apt.conf.d/99-proxmox-rmem"
+cat > "$APT_HOOK_FILE" << 'APTHOOK'
+DPkg::Post-Invoke {
+    "grep -q 'proxmox-rmem' /usr/share/perl5/PVE/QemuServer.pm 2>/dev/null || (python3 /usr/local/bin/proxmox-rmem-patch.py >> /var/log/proxmox-rmem-autopatch.log 2>&1 && systemctl restart pvestatd pvedaemon >> /var/log/proxmox-rmem-autopatch.log 2>&1 && echo \"[$(date)] proxmox-rmem patch auto-applied after apt\" >> /var/log/proxmox-rmem-autopatch.log)";
+};
+APTHOOK
+echo "  apt hook installed: $APT_HOOK_FILE"
+echo "  Patch will be auto-reapplied after any apt upgrade."
 
 # Save installed commit version for future update checks
 if [ -n "$REMOTE_COMMIT" ]; then

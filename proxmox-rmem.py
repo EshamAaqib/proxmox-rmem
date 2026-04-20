@@ -15,6 +15,7 @@ AUTO_DISCOVER_INTERVAL = 60  # Re-discover VMs every 60 cycles (~2 minutes)
 DEFAULT_MAX_CONCURRENT = 5  # Default concurrent VM queries (configurable)
 QMP_TIMEOUT = 10  # Timeout for QMP socket operations
 QEMUSERVER_PM = "/usr/share/perl5/PVE/QemuServer.pm"
+PATCH_SCRIPT = "/usr/local/bin/proxmox-rmem-patch.py"
 PATCH_CHECK_INTERVAL = 300  # Check patch every 300 cycles (~10 minutes)
 
 # Track last known state for change detection
@@ -38,6 +39,37 @@ def get_local_node():
         return _local_node
     except:
         return "localhost"
+
+
+def auto_repair_patch():
+    """
+    Attempt to re-apply the proxmox-rmem patch automatically when it is missing.
+    Runs patch_pve.py and restarts the affected Proxmox services.
+    Returns True if repair succeeded, False otherwise.
+    """
+    if not os.path.exists(PATCH_SCRIPT):
+        log(f"Auto-repair: patch script not found at {PATCH_SCRIPT}")
+        return False
+    try:
+        log("Auto-repair: re-applying proxmox-rmem patch to QemuServer.pm...")
+        result = subprocess.run(
+            ["python3", PATCH_SCRIPT],
+            capture_output=True, text=True, timeout=30
+        )
+        if result.returncode == 0:
+            log("Auto-repair: patch applied. Restarting pvestatd and pvedaemon...")
+            subprocess.run(
+                ["systemctl", "restart", "pvestatd", "pvedaemon"],
+                capture_output=True, timeout=30
+            )
+            log("Auto-repair: complete. Memory values will now display correctly in Proxmox UI.")
+            return True
+        else:
+            log(f"Auto-repair: patch script failed (exit {result.returncode}): {result.stderr.strip()}")
+            return False
+    except Exception as e:
+        log(f"Auto-repair: error running patch: {e}")
+        return False
 
 
 def check_patch_applied():
@@ -97,10 +129,14 @@ def periodic_patch_check():
     _last_patch_check = _cycle_count
     patch_status = check_patch_applied()
     
-    if patch_status is False and not _patch_warned:
-        log("WARNING: Proxmox patch has been removed! Memory overrides will not display in UI.")
-        log("Re-run installer: FORCE_INSTALL=1 bash -c \"$(curl -fsSL https://raw.githubusercontent.com/IT-BAER/proxmox-rmem/main/install.sh)\"")
-        _patch_warned = True
+    if patch_status is False:
+        log("WARNING: Proxmox patch has been removed! Attempting auto-repair...")
+        repaired = auto_repair_patch()
+        if repaired:
+            _patch_warned = False
+        elif not _patch_warned:
+            log("Auto-repair failed. Re-run installer: FORCE_INSTALL=1 bash -c \"$(curl -fsSL https://raw.githubusercontent.com/IT-BAER/proxmox-rmem/main/install.sh)\"")
+            _patch_warned = True
     elif patch_status is True and _patch_warned:
         log("Patch restored: QemuServer.pm is now patched correctly")
         _patch_warned = False

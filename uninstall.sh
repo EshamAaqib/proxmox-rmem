@@ -67,12 +67,21 @@ else
 fi
 
 # 4. Remove installed script
-print_status "[4/6] Removing installed script..."
+print_status "[4/6] Removing installed scripts..."
 if [ -f "$INSTALL_DIR/proxmox-rmem.py" ]; then
     rm -f "$INSTALL_DIR/proxmox-rmem.py"
     echo "  Script removed."
 else
     echo "  Script not found, skipping."
+fi
+if [ -f "$INSTALL_DIR/proxmox-rmem-patch.py" ]; then
+    rm -f "$INSTALL_DIR/proxmox-rmem-patch.py"
+    echo "  Patch script removed."
+fi
+APT_HOOK="/etc/apt/apt.conf.d/99-proxmox-rmem"
+if [ -f "$APT_HOOK" ]; then
+    rm -f "$APT_HOOK"
+    echo "  apt post-invoke hook removed: $APT_HOOK"
 fi
 
 # 5. Remove all override files
