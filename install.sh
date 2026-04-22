@@ -13,6 +13,8 @@ CONFIG_DIR="/etc/proxmox-rmem"
 SERVICE_FILE="/etc/systemd/system/proxmox-rmem.service"
 TEMP_DIR="/tmp/proxmox-rmem-install"
 VERSION_FILE="$CONFIG_DIR/.installed_commit"
+APT_HOOK_FILE="/etc/apt/apt.conf.d/99-proxmox-rmem"
+APT_HOOK_SCRIPT="$INSTALL_DIR/proxmox-rmem-apt-hook.sh"
 
 # Colors for output
 RED='\033[0;31m'
@@ -150,6 +152,22 @@ cp proxmox-rmem.py "$INSTALL_DIR/proxmox-rmem.py"
 chmod +x "$INSTALL_DIR/proxmox-rmem.py"
 cp patch_pve.py "$INSTALL_DIR/proxmox-rmem-patch.py"
 chmod +x "$INSTALL_DIR/proxmox-rmem-patch.py"
+cat > "$APT_HOOK_SCRIPT" <<'EOF'
+#!/bin/sh
+
+LOG_FILE="/var/log/proxmox-rmem-autopatch.log"
+TARGET_PM="/usr/share/perl5/PVE/QemuServer.pm"
+
+if ! grep -q 'proxmox-rmem' "$TARGET_PM" 2>/dev/null; then
+    if python3 /usr/local/bin/proxmox-rmem-patch.py >> "$LOG_FILE" 2>&1; then
+        systemctl restart pvestatd pvedaemon >> "$LOG_FILE" 2>&1 || true
+        echo "[$(date -Iseconds)] proxmox-rmem patch auto-applied after apt" >> "$LOG_FILE"
+    fi
+fi
+
+exit 0
+EOF
+chmod +x "$APT_HOOK_SCRIPT"
 
 # 5. Setup Systemd Service
 print_status "[5/6] Creating systemd service..."
@@ -176,11 +194,8 @@ systemctl restart proxmox-rmem
 
 # 6. Install apt post-invoke hook
 print_status "[6/6] Installing apt post-invoke hook..."
-APT_HOOK_FILE="/etc/apt/apt.conf.d/99-proxmox-rmem"
-cat > "$APT_HOOK_FILE" << 'APTHOOK'
-DPkg::Post-Invoke {
-    "grep -q 'proxmox-rmem' /usr/share/perl5/PVE/QemuServer.pm 2>/dev/null || (python3 /usr/local/bin/proxmox-rmem-patch.py >> /var/log/proxmox-rmem-autopatch.log 2>&1 && systemctl restart pvestatd pvedaemon >> /var/log/proxmox-rmem-autopatch.log 2>&1 && echo \"[$(date)] proxmox-rmem patch auto-applied after apt\" >> /var/log/proxmox-rmem-autopatch.log)";
-};
+cat > "$APT_HOOK_FILE" <<APTHOOK
+DPkg::Post-Invoke:: "$APT_HOOK_SCRIPT";
 APTHOOK
 echo "  apt hook installed: $APT_HOOK_FILE"
 echo "  Patch will be auto-reapplied after any apt upgrade."

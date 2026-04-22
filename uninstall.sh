@@ -10,6 +10,7 @@ CONFIG_DIR="/etc/proxmox-rmem"
 SERVICE_FILE="/etc/systemd/system/proxmox-rmem.service"
 TARGET_PM="/usr/share/perl5/PVE/QemuServer.pm"
 BACKUP_PM="/usr/share/perl5/PVE/QemuServer.pm.bak"
+APT_HOOK_SCRIPT="$INSTALL_DIR/proxmox-rmem-apt-hook.sh"
 
 # Colors for output
 RED='\033[0;31m'
@@ -77,6 +78,10 @@ fi
 if [ -f "$INSTALL_DIR/proxmox-rmem-patch.py" ]; then
     rm -f "$INSTALL_DIR/proxmox-rmem-patch.py"
     echo "  Patch script removed."
+fi
+if [ -f "$APT_HOOK_SCRIPT" ]; then
+    rm -f "$APT_HOOK_SCRIPT"
+    echo "  apt hook helper removed."
 fi
 APT_HOOK="/etc/apt/apt.conf.d/99-proxmox-rmem"
 if [ -f "$APT_HOOK" ]; then
