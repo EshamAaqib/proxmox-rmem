@@ -102,7 +102,7 @@ def verify_patch_on_startup():
         log("This typically happens after a Proxmox package update.")
         log("")
         log("To re-apply the patch, run:")
-        log('  FORCE_INSTALL=1 bash -c "$(curl -fsSL https://raw.githubusercontent.com/IT-BAER/proxmox-rmem/main/install.sh)"')
+        log('  FORCE_INSTALL=1 bash -c "$(curl -fsSL https://raw.githubusercontent.com/EshamAaqib/proxmox-rmem/main/install.sh)"')
         log("=" * 70)
         _patch_warned = True
         return False
@@ -135,7 +135,7 @@ def periodic_patch_check():
         if repaired:
             _patch_warned = False
         elif not _patch_warned:
-            log("Auto-repair failed. Re-run installer: FORCE_INSTALL=1 bash -c \"$(curl -fsSL https://raw.githubusercontent.com/IT-BAER/proxmox-rmem/main/install.sh)\"")
+            log("Auto-repair failed. Re-run installer: FORCE_INSTALL=1 bash -c \"$(curl -fsSL https://raw.githubusercontent.com/EshamAaqib/proxmox-rmem/main/install.sh)\"")
             _patch_warned = True
     elif patch_status is True and _patch_warned:
         log("Patch restored: QemuServer.pm is now patched correctly")
