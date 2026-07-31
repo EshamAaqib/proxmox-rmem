@@ -32,14 +32,14 @@ After upgrading to Proxmox VE 9, VM memory usage may appear higher than expected
 > **One-liner installation** (run on Proxmox host):
 
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/IT-BAER/proxmox-rmem/main/install.sh)"
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/EshamAaqib/proxmox-rmem/main/install.sh)"
 ```
 
 ### Manual Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/IT-BAER/proxmox-rmem.git
+git clone https://github.com/EshamAaqib/proxmox-rmem.git
 cd proxmox-rmem
 
 # Run installer
@@ -53,10 +53,10 @@ Re-run the install script to check for and apply updates:
 
 ```bash
 # One-liner update
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/IT-BAER/proxmox-rmem/main/install.sh)"
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/EshamAaqib/proxmox-rmem/main/install.sh)"
 
 # Force reinstall (even if up to date)
-FORCE_INSTALL=1 bash -c "$(curl -fsSL https://raw.githubusercontent.com/IT-BAER/proxmox-rmem/main/install.sh)"
+FORCE_INSTALL=1 bash -c "$(curl -fsSL https://raw.githubusercontent.com/EshamAaqib/proxmox-rmem/main/install.sh)"
 
 # Or from cloned repo (pull first)
 git pull && ./install.sh
@@ -231,7 +231,7 @@ cat /tmp/pve-vm-101-mem-override
 Completely removes all components and restores original Proxmox behavior:
 
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/IT-BAER/proxmox-rmem/main/uninstall.sh)"
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/EshamAaqib/proxmox-rmem/main/uninstall.sh)"
 ```
 
 Or if installed locally:
